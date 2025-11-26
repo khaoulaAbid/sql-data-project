@@ -360,7 +360,7 @@ LIMIT 3;
 
 ###########################
 
-
+Lister les commandes dont le montant total est strictement supérieur à la moyenne de toutes les commandes.
 
 SELECT 
     p.order_id,
@@ -379,3 +379,63 @@ HAVING SUM(oi.quantity * oi.price) > (
     ) AS sous_totaux
 )
 ORDER BY total_commande DESC;
+
+
+#################**Partie 7 – Statistiques & agrégats
+
+########Calculer le chiffre d’affaires total (toutes commandes confondues, hors commandes annulées si souhaité).
+
+SELECT
+    oi.order_id,oi.product_id,
+    SUM(oi.quantity * oi.price) AS "chiffre_affaires_total"
+FROM supershopanalytics.orders_items oi
+LEFT JOIN supershopanalytics.products p
+       ON oi.product_id = p.product_id
+LEFT JOIN supershopanalytics.orders o
+       ON oi.order_id = o.order_id
+GROUP BY oi.order_id,oi.product_id;
+
+######################Calculer le panier moyen (montant moyen par commande).
+SELECT 
+    AVG(total_commande) AS panier_moyen
+FROM (
+    SELECT 
+        SUM(oi.quantity * oi.price) AS total_commande
+    FROM supershopanalytics.orders o
+    INNER JOIN supershopanalytics.orders_items oi
+           ON o.order_id = oi.order_id
+    GROUP BY o.order_id
+) AS totaux_par_commande;
+
+##############################
+
+#########Calculer la quantité totale vendue par catégorie.
+SELECT  
+    c.category_id, 
+    c.name, 
+    SUM(oi.quantity) AS quantite_totale
+FROM supershopanalytics.categories c
+INNER JOIN supershopanalytics.products p
+    ON p.category_id = c.category_id
+INNER JOIN supershopanalytics.orders_items oi
+    ON oi.product_id = p.product_id
+GROUP BY c.category_id, c.name
+ORDER BY c.category_id;
+
+
+
+########################
+########Calculer le chiffre d’affaires par mois (au moins sur les données fournies).
+SELECT 
+    EXTRACT(YEAR FROM o.order_date) AS annee,
+    EXTRACT(MONTH FROM o.order_date) AS mois,
+    SUM(oi.quantity * oi.price) AS chiffre_affaires
+FROM supershopanalytics.orders o
+INNER JOIN supershopanalytics.orders_items oi
+    ON o.order_id = oi.order_id
+GROUP BY 
+    EXTRACT(YEAR FROM o.order_date),
+    EXTRACT(MONTH FROM o.order_date)
+ORDER BY 
+    annee,
+    mois;
