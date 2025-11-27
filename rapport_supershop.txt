@@ -1,0 +1,34 @@
+RAPPORT SUPERSHOP – ANALYSE DES VENTES
+Généré le : 2027-11-25 10:27:43
+============================================================
+
+1) Chiffre d’affaires total
+------------------------------------------------------------
+Le chiffre d’affaires total (hors commandes annulées) est de 317.49 €.
+
+
+2) Panier moyen
+------------------------------------------------------------
+Le panier moyen (hors commandes annulées) est de 45.35 € par commande.
+
+
+3) Quantite total
+------------------------------------------------------------
+quantité totale vendue par catégorie :15
+
+
+4) Top 3 des clients ayant le plus dépensé
+------------------------------------------------------------
+Les trois clients ayant le plus dépensé (hors commandes annulées) sont :
+1. Katia Garnier 
+2. Julien Fontaine 
+3. David Robert 
+
+
+5) Chiffre d’affaires par catégorie
+------------------------------------------------------------
+Répartition du chiffre d’affaires (hors commandes annulées) par catégorie de produits :
+
+Maison & Cuisine 125.96 €
+Sport & Loisirs 69.95 €
+Beauté & Santé 31.80 €

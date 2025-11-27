@@ -219,7 +219,7 @@ def init_supershop_db():
 
         conn.commit()
 
-    print("Base SuperShopAnalytics initialisée ! 🎉")
+    print("Base SuperShopAnalytics initialisée ! ")
 
 
 init_supershop_db()
