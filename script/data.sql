@@ -439,3 +439,194 @@ GROUP BY
 ORDER BY 
     annee,
     mois;
+
+#############################Formater les montants pour n’afficher que deux décimales.
+
+
+SELECT 
+    p.order_id,
+    p.order_date,
+    ROUND (SUM(oi.quantity * oi.price),2) AS total_commande
+FROM supershopanalytics.orders p
+INNER JOIN supershopanalytics.orders_items oi
+       ON p.order_id = oi.order_id
+GROUP BY p.order_id, p.order_date
+HAVING SUM(oi.quantity * oi.price) > (
+    SELECT AVG(total)
+    FROM (
+        SELECT SUM(quantity * price) AS total
+        FROM supershopanalytics.orders_items
+        GROUP BY order_id
+    ) AS sous_totaux
+)
+ORDER BY total_commande DESC;    
+
+
+#################***** Partie 8 – Logique conditionnelle (CASE)
+-- Pour chaque commande, afficher :
+
+-- l’ID de la commande,
+-- le client,
+-- la date,
+-- le statut,
+-- une version “lisible” du statut en français via CASE :
+
+-- PAID → “Payée”
+-- SHIPPED → “Expédiée”
+-- PENDING → “En attente”
+-- CANCELLED → “Annulée”
+
+
+
+WITH base_statut_view AS (
+    SELECT 
+        statut_id, 
+        status_name,
+        CASE 
+            WHEN status_name = 'PAID' THEN 'Payée'
+            WHEN status_name = 'SHIPPED' THEN 'Expédiée'
+            WHEN status_name = 'PENDING' THEN 'En attente'
+            WHEN status_name = 'CANCELLED' THEN 'Annulée'
+            ELSE NULL
+        END AS status_commande
+    FROM supershopanalytics.statut_commande
+)
+
+
+SELECT 
+    o.order_id,
+    c.firstname AS prenom,
+    c.lastname AS nom,
+    o.order_date AS date_commande,
+    v.status_commande AS statut_commande
+FROM supershopanalytics.orders o
+INNER JOIN supershopanalytics.customers c 
+    ON o.customer_id = c.customer_id
+INNER JOIN base_statut_view v 
+    ON o.statut_id = v.statut_id;
+
+
+###################################Pour chaque client, calculer le montant total dépensé et le classer en segments :
+
+
+WITH base_montant_view AS (
+    SELECT 
+        c.customer_id,
+        c.firstname AS prenom,
+        c.lastname AS nom,
+        SUM(oi.quantity * oi.price) AS montant_total
+    FROM supershopanalytics.orders o
+    INNER JOIN supershopanalytics.orders_items oi 
+        ON o.order_id = oi.order_id
+    INNER JOIN supershopanalytics.customers c 
+        ON o.customer_id = c.customer_id
+    GROUP BY c.customer_id, c.firstname, c.lastname
+)
+
+SELECT 
+    prenom,
+    nom,
+    montant_total,
+    CASE 
+        WHEN montant_total < 100 THEN 'Bronze'
+        WHEN montant_total >= 100 AND montant_total <= 300 THEN 'Argent'
+        WHEN montant_total > 300 THEN 'Or'
+        ELSE NULL
+    END AS categorie_client
+FROM base_montant_view;
+
+
+
+#################*****  Partie 9 – Challenge final
+
+-- Top 5 des clients les plus actifs (nombre de commandes).
+
+
+SELECT c.customer_id , c.firstname as prenom, c.lastname as nom , COUNT (o.order_id)	AS nombre_commande
+FROM supershopanalytics.customers c
+LEFT JOIN supershopanalytics.orders o 
+ON c.customer_id = o.customer_id
+GROUP BY c.customer_id
+ORDER BY COUNT (o.order_id) DESC
+LIMIT 5;
+
+-- Top 5 des clients qui ont dépensé le plus (CA total).
+
+SELECT c.customer_id , c.firstname as prenom, c.lastname as nom , SUM(oi.quantity * oi.price) AS montant_total
+    FROM supershopanalytics.orders o
+    INNER JOIN supershopanalytics.orders_items oi 
+        ON o.order_id = oi.order_id
+    INNER JOIN supershopanalytics.customers c 
+        ON o.customer_id = c.customer_id
+    GROUP BY c.customer_id 
+	ORDER BY montant_total DESC
+	LIMIT 5;
+
+
+-- Les 3 catégories les plus rentables (CA total).
+
+SELECT c.category_id , c.name as nom_categorie, SUM(oi.quantity * oi.price) AS montant_total
+    FROM supershopanalytics.products p
+    INNER JOIN supershopanalytics.orders_items oi 
+        ON p.product_id = oi.order_id
+    INNER JOIN supershopanalytics.categories c 
+        ON p.category_id = c.category_id
+    GROUP BY c.category_id 
+	ORDER BY montant_total DESC
+	LIMIT 3;
+
+
+-- Les produits qui ont généré au total moins de 10 € de CA.
+
+SELECT p.product_id ,p.name   as nom_produit, SUM(oi.quantity * oi.price) AS montant_total
+    FROM supershopanalytics.products p
+    INNER JOIN supershopanalytics.orders_items oi 
+        ON p.product_id = oi.order_id
+    GROUP BY p.product_id 
+	HAVING  SUM(oi.quantity * oi.price) > 10
+	ORDER BY montant_total DESC;
+
+-- Les clients n’ayant passé qu’une seule commande.
+-- nb commande par client avec having count nb_commande =1
+
+SELECT c.customer_id , c.firstname as prenom , c.lastname as nom ,count (o.order_id) as nb_commande
+FROM supershopanalytics.customers c
+LEFT JOIN  supershopanalytics.orders o
+ON c.customer_id = o.customer_id
+GROUP BY c.customer_id ,prenom ,  nom
+HAVING count (o.order_id) = 1 ;
+
+
+-- Les produits présents dans des commandes annulées, avec le montant “perdu”.
+
+
+WITH base_cancelled_view AS (
+    SELECT 
+        p.product_id,
+        o.order_id,
+        SUM(oi.price * oi.quantity) AS montant_perdu
+    FROM supershopanalytics.orders_items oi
+    INNER JOIN supershopanalytics.products p 
+        ON oi.product_id = p.product_id
+    INNER JOIN supershopanalytics.orders o 
+        ON oi.order_id = o.order_id
+    WHERE o.statut_id = (
+        SELECT statut_id 
+        FROM supershopanalytics.statut_commande 
+        WHERE status_name = 'CANCELLED'
+    )
+    GROUP BY 
+        p.product_id,
+        o.order_id
+)
+
+SELECT 
+    product_id,
+    order_id,
+    montant_perdu,
+    CASE 
+        WHEN montant_perdu IS NOT NULL THEN 'montant_perdu'
+        ELSE NULL
+    END AS status_montant
+FROM base_cancelled_view;
+
